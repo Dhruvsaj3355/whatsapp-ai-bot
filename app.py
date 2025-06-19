@@ -7,7 +7,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 app = Flask(__name__)
 
 VERIFY_TOKEN = "mybot123"
-ACCESS_TOKEN = os.getenv("EAAUXJ8h1sSMBO1l2chzc4Uusencxe6R4sGefiLiaAqtbPJRFH9a3cpq8OXgLwdIlISYrboTPsK9dbn6L1jLy6LGUJOA4S6lsiILNuP4Ipd8ej6Cd2f7csfwV76Q2aIpmSZBMOPalcRKy7W8dKaKoXEajBZBulZA9qZCzWva3cJvZAJH59LIdpgmuVQS8WcpxS3gZDZD")
+ACCESS_TOKEN = os.getenv("EAAUXJ8h1sSMBOzUQUH63fpPgK5yR03FMTxGTVIQo7VhLNjvm8ZAZAX5TTjrLctDhWjE6bW8WQu8gp71PwiL6v3yhboZCZC2sRACba2mFqlPJQoqyoYTvK4dhPyHCFvlM1TRkeH1CLZCtW6TmjY7XzxPKDd8QRKUfEHxqW9agZC8wcIRVNL9wvoHChVNbdOpZCAZCR8ptx4iqDFHPkRKEzd5YIW4G8EPRHco1IstAkHrpStZAdZBqUZD")
 PHONE_NUMBER_ID = os.getenv("698497970011796")
 
 scheduler = BackgroundScheduler()
