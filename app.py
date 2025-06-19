@@ -7,8 +7,8 @@ from apscheduler.schedulers.background import BackgroundScheduler
 app = Flask(__name__)
 
 VERIFY_TOKEN = "mybot123"
-ACCESS_TOKEN = os.getenv("EAAUXJ8h1sSMBO1l2chzc4Uusencxe6R4sGefiLiaAqtbPJRFH9a3cpq8OXgLwdIlISYrboTPsK9dbn6L1jLy6LGUJOA4S6lsiILNuP4Ipd8ej6Cd2f7csfwV76Q2aIpmSZBMOPalcRKy7W8dKaKoXEajBZBulZA9qZCzWva3cJvZAJH59LIdpgmuVQS8WcpxS3gZDZD")  # Set your token in environment
-PHONE_NUMBER_ID = os.getenv("698497970011796")  # Set your phone ID in environment
+ACCESS_TOKEN = os.getenv("EAAUXJ8h1sSMBO1l2chzc4Uusencxe6R4sGefiLiaAqtbPJRFH9a3cpq8OXgLwdIlISYrboTPsK9dbn6L1jLy6LGUJOA4S6lsiILNuP4Ipd8ej6Cd2f7csfwV76Q2aIpmSZBMOPalcRKy7W8dKaKoXEajBZBulZA9qZCzWva3cJvZAJH59LIdpgmuVQS8WcpxS3gZDZD")
+PHONE_NUMBER_ID = os.getenv("698497970011796")
 
 scheduler = BackgroundScheduler()
 scheduler.start()
@@ -28,12 +28,14 @@ def send_whatsapp_message(to, message):
         "type": "text",
         "text": {"body": message}
     }
-    requests.post(url, headers=headers, json=payload)
+    response = requests.post(url, headers=headers, json=payload)
+    print("📤 Sent message response:", response.status_code, response.text)
 
 def check_reminders():
     now = datetime.datetime.now().strftime("%H:%M")
     for r in reminders[:]:
         if r[2] == now:
+            print(f"⏰ Sending reminder to {r[0]}: {r[1]}")
             send_whatsapp_message(r[0], f"⏰ Reminder: {r[1]}")
             reminders.remove(r)
 
@@ -48,10 +50,24 @@ def verify():
 @app.route("/webhook", methods=["POST"])
 def webhook():
     data = request.get_json()
+    print("🔍 Incoming JSON:", data)  # Log the entire payload
+
     try:
-        message = data['entry'][0]['changes'][0]['value']['messages'][0]
-        text = message['text']['body'].lower()
-        from_number = message['from']
+        # Extract message
+        entry = data.get('entry', [])[0]
+        changes = entry.get('changes', [])[0]
+        value = changes.get('value', {})
+        messages = value.get('messages', [])
+
+        if not messages:
+            print("⚠️ No messages in update.")
+            return "OK", 200
+
+        message = messages[0]
+        text = message.get('text', {}).get('body', '').lower()
+        from_number = message.get('from')
+
+        print(f"📩 Received from {from_number}: {text}")
 
         if text.startswith("hi"):
             send_whatsapp_message(from_number, "Hi there! How can I help you today?")
@@ -61,18 +77,28 @@ def webhook():
             if len(parts) == 2:
                 time_part = parts[0].strip().replace("pm", "").replace("am", "").strip()
                 task = parts[1].strip()
-                time_obj = datetime.datetime.strptime(time_part, "%H:%M")
-                formatted_time = time_obj.strftime("%H:%M")
-                reminders.append((from_number, task, formatted_time))
-                send_whatsapp_message(from_number, f"✅ Reminder set at {formatted_time} to '{task}'")
+                try:
+                    time_obj = datetime.datetime.strptime(time_part, "%H:%M")
+                    formatted_time = time_obj.strftime("%H:%M")
+                    reminders.append((from_number, task, formatted_time))
+                    print(f"✅ Reminder scheduled at {formatted_time} for {from_number}: {task}")
+                    send_whatsapp_message(from_number, f"✅ Reminder set at {formatted_time} to '{task}'")
+                except ValueError:
+                    send_whatsapp_message(from_number, "❌ Invalid time format. Use HH:MM in 24-hour format.")
             else:
-                send_whatsapp_message(from_number, "Sorry, I couldn't understand that format. Use: remind me at 11:00 to eat")
+                send_whatsapp_message(from_number, "❌ Could not parse reminder. Use: remind me at 18:30 to call mom")
+
         else:
-            send_whatsapp_message(from_number, "Sorry, I didn't understand that. Can you rephrase?")
+            send_whatsapp_message(from_number, "❓ I didn’t understand that. Try: remind me at 14:00 to drink water")
+
     except Exception as e:
-        print("Error:", e)
+        print("🚨 Exception in webhook:", e)
+
     return "OK", 200
+
+@app.route('/')
+def home():
+    return '✅ WhatsApp Reminder Bot is running!'
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
-
