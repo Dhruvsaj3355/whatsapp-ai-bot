@@ -1,22 +1,20 @@
 from flask import Flask, request
 import requests
 import json
-import datetime
-import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 
 app = Flask(__name__)
 
-VERIFY_TOKEN = "mybot123"  # Change if needed
+# 🛡️ Configurable Tokens
+VERIFY_TOKEN = "mybot123"
 ACCESS_TOKEN = "EAAUXJ8h1sSMBOZCTcF9RlEkRHZApU2FDWPezDg2JPoejDRJ9aFWm9mfCViAVesMnaoNhLbbVFsM2IbZAl4jqHe1mByJXZBkzdRG0rJ5ZAhNu2H5yZCJ0t9hwLIHR2FhZAienKt65GMKQYZB7uyWTkKcHDSbiYQFyyd0brxwXZBLyH4HJMgKRUAp2wrKsy8K4uy0bxwZAA3C3gyQKR3ZBdWP22RU9mDrUn1tWerumkZBzOTQPfMh4SAZDZD"
 PHONE_NUMBER_ID = "698497970011796"
 GROQ_API_KEY = "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"
+GROQ_MODEL = "mixtral-8x7b-32768"
 
-groq_model = "mixtral-8x7b-32768"
-
+# Scheduler
 scheduler = BackgroundScheduler()
 scheduler.start()
-reminders = []
 
 
 def send_whatsapp_message(text, to):
@@ -31,7 +29,8 @@ def send_whatsapp_message(text, to):
         "type": "text",
         "text": {"body": text}
     }
-    requests.post(url, headers=headers, json=data)
+    res = requests.post(url, headers=headers, json=data)
+    print("📤 Sent message:", res.status_code, res.text)
 
 
 def ask_groq_ai(message):
@@ -41,20 +40,15 @@ def ask_groq_ai(message):
         "Content-Type": "application/json"
     }
     body = {
-        "model": groq_model,
+        "model": GROQ_MODEL,
         "messages": [
-            {"role": "system", "content": "You are a helpful assistant who can also create reminders."},
+            {"role": "system", "content": "You are a helpful assistant who understands reminders."},
             {"role": "user", "content": message}
         ]
     }
     response = requests.post(url, headers=headers, json=body)
+    response.raise_for_status()
     return response.json()['choices'][0]['message']['content']
-
-
-def schedule_reminder(phone, message, when):
-    def job():
-        send_whatsapp_message(f"⏰ Reminder: {message}", phone)
-    scheduler.add_job(job, 'date', run_date=when)
 
 
 @app.route("/webhook", methods=["GET", "POST"])
@@ -64,28 +58,35 @@ def webhook():
         token = request.args.get("hub.verify_token")
         challenge = request.args.get("hub.challenge")
         if mode == "subscribe" and token == VERIFY_TOKEN:
+            print("✅ Webhook verified!")
             return challenge, 200
         else:
             return "Unauthorized", 403
 
     if request.method == "POST":
         data = request.get_json()
+        print("📥 Incoming webhook:", json.dumps(data, indent=2))
+
         try:
             message = data['entry'][0]['changes'][0]['value']['messages'][0]
             phone = message['from']
             text = message['text']['body']
+            print(f"📨 Message from {phone}: {text}")
 
             if "remind" in text.lower():
-                ai_reply = ask_groq_ai(f"Extract date/time and message: {text}")
-                send_whatsapp_message(f"Reminder set: {ai_reply}", phone)
-                # (Optional: Parse date using LLM output and schedule)
+                ai_reply = ask_groq_ai(f"Extract date/time and message from: {text}")
+                send_whatsapp_message(f"✅ Reminder noted: {ai_reply}", phone)
+                # Optional: Parse datetime & schedule actual reminder
             else:
-                reply = ask_groq_ai(text)
-                send_whatsapp_message(reply, phone)
+                ai_response = ask_groq_ai(text)
+                send_whatsapp_message(ai_response, phone)
+
         except Exception as e:
-            print("Error:", e)
+            print("❌ Error:", e)
+
         return "OK", 200
 
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
