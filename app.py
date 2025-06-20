@@ -8,7 +8,7 @@ app = Flask(__name__)
 
 VERIFY_TOKEN = "mybot123"
 ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN")
-PHONE_NUMBER_ID = os.getenv("698497970011796")
+PHONE_NUMBER_ID = os.getenv("PHONE_NUMBER_ID")
 
 scheduler = BackgroundScheduler()
 scheduler.start()
